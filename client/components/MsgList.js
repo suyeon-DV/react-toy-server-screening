@@ -1,19 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import MsgInput from './MsgInput';
 import MsgItem from './MsgItem';
+import fetcher from '../featcher';
 
 const UserIds = ['roy', 'jay'];
 const getRandomUserId = () => UserIds[Math.round(Math.random())];
 
-const originState = Array(50).fill(0).map((_, i) => ({
-    id: i + 1,
-    userId: getRandomUserId(),
-    timeStamp: 1234567890123 + i * 1000 * 60,
-    text: `${50 - i} mock text`
-}))
-
 const MsgList = () => {
-    const [msgs, setMsgs] = useState(originState);
+    const [msgs, setMsgs] = useState([]);
     const [editingId, setEditingId] = useState(null)
 
     const onCreate = text => {
@@ -27,6 +21,15 @@ const MsgList = () => {
     }
 
     const doneEdit = () => setEditingId(null);
+
+    const getMessages = async () => {
+        const megs = await fetcher('get', '/messages');
+        setMsgs(megs)
+    }
+
+    useEffect(() => {
+        getMessages();
+    }, [])
 
     const onUpdate = (text, id) => {
         // setMsgs 안에 로직을 넣는 이유는 state 상에서 msgs를 가져오기 때문에
