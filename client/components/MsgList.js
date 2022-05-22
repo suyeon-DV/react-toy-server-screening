@@ -4,8 +4,8 @@ import MsgInput from "./MsgInput";
 import MsgItem from "./MsgItem";
 import fetcher from "../fetcher";
 
-const UserIds = ["roy", "jay"];
-const getRandomUserId = () => UserIds[Math.round(Math.random())];
+// const UserIds = ["roy", "jay"];
+// const getRandomUserId = () => UserIds[Math.round(Math.random())];
 
 const MsgList = () => {
   const {
@@ -54,9 +54,12 @@ const MsgList = () => {
     getMessages();
   }, []);
 
-  const onDelete = (id) => {
+  const onDelete = async (id) => {
+    const receivedId = await fetcher("delete", `/messages/${id}`, {
+      params: { userId },
+    });
     setMsgs((msgs) => {
-      const targetIndex = msgs.findIndex((msg) => msg.id === id);
+      const targetIndex = msgs.findIndex((msg) => msg.id === receivedId + "");
       if (targetIndex < 0) return msgs;
       const newMsgs = [...msgs];
       newMsgs.splice(targetIndex, 1);
