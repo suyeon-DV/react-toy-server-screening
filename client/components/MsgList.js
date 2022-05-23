@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import MsgInput from "./MsgInput";
 import MsgItem from "./MsgItem";
 import fetcher from "../fetcher";
+import useInfiniteScroll from "../hooks/useInfiniteScroll";
 
 // const UserIds = ["roy", "jay"];
 // const getRandomUserId = () => UserIds[Math.round(Math.random())];
@@ -13,6 +14,10 @@ const MsgList = () => {
   } = useRouter();
   const [msgs, setMsgs] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  const [hasNext, setHasNext] = useState(true);
+
+  const fetchMoreEl = useRef(null);
+  const intersecting = useInfiniteScroll(fetchMoreEl);
 
   const doneEdit = () => setEditingId(null);
 
@@ -46,13 +51,24 @@ const MsgList = () => {
   };
 
   const getMessages = async () => {
-    const megs = await fetcher("get", "/messages");
-    setMsgs(megs);
+    const newMegs = await fetcher("get", "/messages", {
+      params: { cursor: msgs[msgs.length - 1]?.id || "" },
+    });
+    if (newMegs.length === 0) {
+      setHasNext(false);
+      return;
+    }
+
+    setMsgs((msg) => [...msg, ...newMegs]);
   };
 
+  // useEffect(() => {
+  //   getMessages();
+  // }, []);
+
   useEffect(() => {
-    getMessages();
-  }, []);
+    if (intersecting && hasNext) getMessages();
+  }, [intersecting]);
 
   const onDelete = async (id) => {
     const receivedId = await fetcher("delete", `/messages/${id}`, {
@@ -85,6 +101,7 @@ const MsgList = () => {
           />
         ))}
       </ul>
+      <div ref={fetchMoreEl} />
     </>
   );
 };
