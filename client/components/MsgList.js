@@ -8,11 +8,11 @@ import useInfiniteScroll from "../hooks/useInfiniteScroll";
 // const UserIds = ["roy", "jay"];
 // const getRandomUserId = () => UserIds[Math.round(Math.random())];
 
-const MsgList = () => {
+const MsgList = ({ serverMsgs, serverUsers }) => {
   const {
     query: { userId = "" },
   } = useRouter();
-  const [msgs, setMsgs] = useState([]);
+  const [msgs, setMsgs] = useState(serverMsgs);
   const [editingId, setEditingId] = useState(null);
   const [hasNext, setHasNext] = useState(true);
 
@@ -98,6 +98,7 @@ const MsgList = () => {
             startEdit={() => setEditingId(item.id)}
             isEditing={editingId === item.id}
             myId={userId}
+            user={serverUsers[item.userId]}
           />
         ))}
       </ul>
