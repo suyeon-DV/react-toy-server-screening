@@ -10,6 +10,6 @@ const userSchema = gql`
 		users(): [User!]!
 		user(id: ID!): User
 	}
-`
+`;
 
 export default userSchema;
