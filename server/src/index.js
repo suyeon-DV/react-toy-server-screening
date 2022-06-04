@@ -1,6 +1,10 @@
-import express from 'express';
-import cors from 'cors';
-import {ApolloServer} from 'apollo-server-express';
+import express from "express";
+import cors from "cors";
+import { ApolloServer } from "apollo-server-express";
+import resolvers from "./resolvers/index.js";
+import schema from "./schema/index.js";
+import { readDB } from "./dbController.js";
+
 // import messagesRoute from '../routes/message.js';
 // import usersRoute from './../routes/user.js';
 
@@ -9,27 +13,31 @@ const app = express();
 // app.use(express.urlencoded({ extended: true }));
 // app.use(express.json());
 
-app.use(cors({
-    origin: 'http://localhost:3000',
-    credentials: true
-}))
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
 
-app.get('/', (req, res) => {
-    res.send('ok')
-})
+app.get("/", (req, res) => {
+  res.send("ok");
+});
 
 const server = new ApolloServer({
-    typeDefs: schema,
-    resolvers,
-    context: {
-        models: {
-            messages: '',
-            users: '',
-        }
-    }
-})
+  typeDefs: schema,
+  resolvers,
+  context: {
+    db: {
+      messages: readDB("messages"),
+      users: readDB("users"),
+    },
+  },
+});
 
-server.applyMiddleware({ app, path: '/graphql' });
+await server.start();
+
+server.applyMiddleware({ app, path: "/graphql" });
 
 // graphql에서는 필요 없음
 // const routes = [...messagesRoute, ...usersRoute];
@@ -38,5 +46,5 @@ server.applyMiddleware({ app, path: '/graphql' });
 // })
 
 app.listen(8000, () => {
-    console.log('server listening on 8000...');
-})
+  console.log("server listening on 8000...");
+});

@@ -4,13 +4,13 @@ const messagesSchema = gql`
   type Message {
     id: ID!
     test: String!
-    user: User!
+    userId: ID!
     timestamp: Float
   }
 
   extend type Query {
-    messages(cursor: ID): [Message!]!
-    messages(id: ID): Message!
+    messages: [Message!]!
+    message(id: ID!): Message!
   }
 
   extend type Mutation {
