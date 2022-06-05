@@ -4,54 +4,82 @@ import MsgInput from "./MsgInput";
 import MsgItem from "./MsgItem";
 // import fetcher from "../fetcher";
 import { QueryKeys, fetcher } from "../queryClient";
-import useInfiniteScroll from "../hooks/useInfiniteScroll";
-import { useQuery } from "react-query";
-import { GET_MESSAGES } from "./../graphql/message";
+// import useInfiniteScroll from "../hooks/useInfiniteScroll";
+import { useMutation, useQuery, useQueryClient } from "react-query";
+import {
+  GET_MESSAGES,
+  CREATE_MESSAGE,
+  UPDATE_MESSAGE,
+  DELETE_MESSAGE,
+} from "./../graphql/message";
 
 // const UserIds = ["roy", "jay"];
 // const getRandomUserId = () => UserIds[Math.round(Math.random())];
 
 const MsgList = ({ serverMsgs, serverUsers }) => {
+  const client = useQueryClient();
+
   const {
     query: { userId = "" },
   } = useRouter();
   const [msgs, setMsgs] = useState(serverMsgs);
   const [editingId, setEditingId] = useState(null);
-  // const [hasNext, setHasNext] = useState(true);
 
+  // const [hasNext, setHasNext] = useState(true);
   // const fetchMoreEl = useRef(null);
   // const intersecting = useInfiniteScroll(fetchMoreEl);
 
   const doneEdit = () => setEditingId(null);
 
-  const onCreate = async (text) => {
-    const newMsg = await fetcher("post", "/messages", { text, userId });
-    if (!newMsg) throw Error("It's not a new Message");
-    // const newMsg = {
-    //     id: msgs.length + 1,
-    //     userId: getRandomUserId(),
-    //     timeStamp: Date.now(),
-    //     text: `${msgs.length +1} ${text}`
-    // }
-    setMsgs((msgs) => [newMsg, ...msgs]);
-  };
+  const { mutate: onCreate } = useMutation(
+    ({ text }) => fetcher(CREATE_MESSAGE, { text, userId }),
+    {
+      onSuccess: ({ createMessage }) => {
+        client.setQueryData(QueryKeys.MESSAGES, (old) => {
+          return {
+            messages: [createMessage, ...old.messages],
+          };
+        });
+      },
+    }
+  );
 
-  const onUpdate = async (text, id) => {
-    const newMsg = await fetcher("put", `/messages/${id}`, { text, userId });
-    if (!newMsg) throw Error("It's not a new Message");
+  const { mutate: onUpdate } = useMutation(
+    ({ text, id }) => fetcher(UPDATE_MESSAGE, { text, id, userId }),
+    {
+      onSuccess: ({ updateMessage }) => {
+        client.setQueriesData(QueryKeys.MESSAGES, (old) => {
+          const targetIndex = old.messages.findIndex(
+            (msg) => msg.id === updateMessage.id
+            // callback 함수이기 때문에 update된 message의 id와 비교해야함. (updateMessage.id)
+          );
+          if (targetIndex < 0) return old;
+          const newMsgs = [...old.messages];
+          newMsgs.splice(targetIndex, 1, updateMessage);
+          return { messages: newMsgs };
+        });
+        doneEdit();
+      },
+    }
+  );
 
-    // setMsgs 안에 로직을 넣는 이유는 state 상에서 msgs를 가져오기 때문에
-    // 더 안정적이기 때문
-    // setState를 함수형으로 쓰는 것을 추천한다고 함 -> 더 찾아볼 것
-    setMsgs((msgs) => {
-      const targetIndex = msgs.findIndex((msg) => msg.id === id);
-      if (targetIndex < 0) return msgs;
-      const newMsgs = [...msgs];
-      newMsgs.splice(targetIndex, 1, newMsg);
-      return newMsgs;
-    });
-    doneEdit();
-  };
+  const { mutate: onDelete } = useMutation(
+    (id) => fetcher(DELETE_MESSAGE, { id, userId }),
+    {
+      onSuccess: ({ deleteMessage: deleteId }) => {
+        client.setQueryData(QueryKeys.MESSAGES, (old) => {
+          const targetIndex = old.messages.findIndex(
+            (msg) => msg.id === deleteId
+          );
+          if (targetIndex < 0) return old;
+          const newMsg = [...old.messages];
+          newMsg.splice(targetIndex, 1);
+          return { messages: newMsg };
+        });
+        doneEdit();
+      },
+    }
+  );
 
   const getMessages = async () => {
     const newMegs = await fetcher("get", "/messages", {
@@ -71,27 +99,18 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
 
   const { data, error, isError } = useQuery(QueryKeys.MESSAGES, () =>
     fetcher(GET_MESSAGES)
-  );
+  ); // stale : 옛 것. 미리 받아 놓은 정보.
 
-  console.log(data);
+  useEffect(() => {
+    if (!data?.messages) return;
+    console.log("messages changes");
+    setMsgs(data?.messages || []);
+  }, [data?.messages]);
 
   if (isError) {
     console.error(error);
     return null;
   }
-
-  const onDelete = async (id) => {
-    const receivedId = await fetcher("delete", `/messages/${id}`, {
-      params: { userId },
-    });
-    setMsgs((msgs) => {
-      const targetIndex = msgs.findIndex((msg) => msg.id === receivedId + "");
-      if (targetIndex < 0) return msgs;
-      const newMsgs = [...msgs];
-      newMsgs.splice(targetIndex, 1);
-      return newMsgs;
-    });
-  };
 
   return (
     <>
