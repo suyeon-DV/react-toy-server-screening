@@ -1,5 +1,6 @@
 import MsgList from "../components/MsgList";
-import fetcher from "../fetcher";
+// import fetcher from "../fetcher";
+import { fetcher } from "../QueryClient";
 
 const Home = ({ serverMsgs, serverUsers }) => (
   <div>
@@ -8,9 +9,19 @@ const Home = ({ serverMsgs, serverUsers }) => (
   </div>
 );
 
+// fetcher.js 사용했을 때 REST
+// export const getServerSideProps = async () => {
+//   const serverMsgs = await fetcher("get", "/messages");
+//   const serverUsers = await fetcher("get", "/users");
+
+//   return {
+//     props: { serverMsgs, serverUsers },
+//   };
+// };
+
 export const getServerSideProps = async () => {
-  const serverMsgs = await fetcher("get", "/messages");
-  const serverUsers = await fetcher("get", "/users");
+  const serverMsgs = await fetcher(GET_MESSAGES);
+  const serverUsers = await fetcher(GET_USERS);
 
   return {
     props: { serverMsgs, serverUsers },
