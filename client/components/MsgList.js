@@ -3,23 +3,24 @@ import { useRouter } from "next/router";
 import MsgInput from "./MsgInput";
 import MsgItem from "./MsgItem";
 // import fetcher from "../fetcher";
-import { fetcher } from "../queryClient";
+import { QueryKeys, fetcher } from "../queryClient";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
+import { useQuery } from "react-query";
+import { GET_MESSAGES } from "./../graphql/message";
 
 // const UserIds = ["roy", "jay"];
 // const getRandomUserId = () => UserIds[Math.round(Math.random())];
 
 const MsgList = ({ serverMsgs, serverUsers }) => {
-  return null;
   const {
     query: { userId = "" },
   } = useRouter();
   const [msgs, setMsgs] = useState(serverMsgs);
   const [editingId, setEditingId] = useState(null);
-  const [hasNext, setHasNext] = useState(true);
+  // const [hasNext, setHasNext] = useState(true);
 
-  const fetchMoreEl = useRef(null);
-  const intersecting = useInfiniteScroll(fetchMoreEl);
+  // const fetchMoreEl = useRef(null);
+  // const intersecting = useInfiniteScroll(fetchMoreEl);
 
   const doneEdit = () => setEditingId(null);
 
@@ -65,12 +66,19 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
   };
 
   // useEffect(() => {
-  //   getMessages();
-  // }, []);
+  //   if (intersecting && hasNext) getMessages();
+  // }, [intersecting]);
 
-  useEffect(() => {
-    if (intersecting && hasNext) getMessages();
-  }, [intersecting]);
+  const { data, error, isError } = useQuery(QueryKeys.MESSAGES, () =>
+    fetcher(GET_MESSAGES)
+  );
+
+  console.log(data);
+
+  if (isError) {
+    console.error(error);
+    return null;
+  }
 
   const onDelete = async (id) => {
     const receivedId = await fetcher("delete", `/messages/${id}`, {
@@ -100,11 +108,11 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
             startEdit={() => setEditingId(item.id)}
             isEditing={editingId === item.id}
             myId={userId}
-            user={serverUsers[item.userId]}
+            user={serverUsers.find((user) => user.id === userId)}
           />
         ))}
       </ul>
-      <div ref={fetchMoreEl} />
+      {/* <div ref={fetchMoreEl} /> */}
     </>
   );
 };
