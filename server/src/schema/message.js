@@ -3,7 +3,7 @@ import { gql } from "apollo-server-express";
 const messagesSchema = gql`
   type Message {
     id: ID!
-    test: String!
+    text: String!
     userId: ID!
     timestamp: Float
   }
