@@ -19,14 +19,16 @@ const messageResolver = {
     },
   },
   Mutation: {
-    createMessage: (parent, { text, userId }, db) => {
+    createMessage: (parent, { text, userId }, { db }) => {
+      if (!userId) throw Error("사용자가 없습니다.");
       const newMsg = {
         id: v4(),
         text,
         userId,
         timeStamp: Date.now(),
       };
-      db.messages?.unshift(newMsg);
+      console.log("db messages : ", db.messages);
+      db.messages.unshift(newMsg);
       setMsgs(db.messages);
       return newMsg;
     },
