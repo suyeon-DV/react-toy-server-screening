@@ -27,7 +27,7 @@ const messageResolver = {
         userId,
         timeStamp: Date.now(),
       };
-      console.log("db messages : ", db.messages);
+
       db.messages.unshift(newMsg);
       setMsgs(db.messages);
       return newMsg;

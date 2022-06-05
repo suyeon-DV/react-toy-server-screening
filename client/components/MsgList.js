@@ -2,13 +2,15 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import MsgInput from "./MsgInput";
 import MsgItem from "./MsgItem";
-import fetcher from "../fetcher";
+// import fetcher from "../fetcher";
+import { fetcher } from "../queryClient";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
 
 // const UserIds = ["roy", "jay"];
 // const getRandomUserId = () => UserIds[Math.round(Math.random())];
 
 const MsgList = ({ serverMsgs, serverUsers }) => {
+  return null;
   const {
     query: { userId = "" },
   } = useRouter();
