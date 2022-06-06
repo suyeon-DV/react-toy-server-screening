@@ -4,8 +4,13 @@ import MsgInput from "./MsgInput";
 import MsgItem from "./MsgItem";
 // import fetcher from "../fetcher";
 import { QueryKeys, fetcher } from "../queryClient";
-// import useInfiniteScroll from "../hooks/useInfiniteScroll";
-import { useMutation, useQuery, useQueryClient } from "react-query";
+import useInfiniteScroll from "../hooks/useInfiniteScroll";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useInfiniteQuery,
+} from "react-query";
 import {
   GET_MESSAGES,
   CREATE_MESSAGE,
@@ -25,9 +30,8 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
   const [msgs, setMsgs] = useState(serverMsgs);
   const [editingId, setEditingId] = useState(null);
 
-  // const [hasNext, setHasNext] = useState(true);
-  // const fetchMoreEl = useRef(null);
-  // const intersecting = useInfiniteScroll(fetchMoreEl);
+  const fetchMoreEl = useRef(null);
+  const intersecting = useInfiniteScroll(fetchMoreEl);
 
   const doneEdit = () => setEditingId(null);
 
@@ -93,19 +97,26 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
     setMsgs((msg) => [...msg, ...newMegs]);
   };
 
-  // useEffect(() => {
-  //   if (intersecting && hasNext) getMessages();
-  // }, [intersecting]);
-
-  const { data, error, isError } = useQuery(QueryKeys.MESSAGES, () =>
-    fetcher(GET_MESSAGES)
-  ); // stale : 옛 것. 미리 받아 놓은 정보.
+  const { data, error, isError, fetchNextPage, hasNextPage } = useInfiniteQuery(
+    QueryKeys.MESSAGES,
+    ({ pageParam = "" }) => fetcher(GET_MESSAGES, { cursor: pageParam }),
+    {
+      getNextPageParam: ({ messages }) => {
+        return messages?.[messages.length - 1]?.id;
+      },
+    }
+  ); // stale : 옛 것. 미리 받아 놓은 정보.4
 
   useEffect(() => {
-    if (!data?.messages) return;
-    console.log("messages changes");
-    setMsgs(data?.messages || []);
-  }, [data?.messages]);
+    if (intersecting && hasNextPage) fetchNextPage();
+  }, [intersecting, hasNextPage]);
+
+  useEffect(() => {
+    if (!data?.pages) return;
+    const mergedMsgs = data.pages.flatMap((data) => data.messages);
+    console.log({ mergedMsgs });
+    setMsgs(mergedMsgs);
+  }, [data?.pages]);
 
   if (isError) {
     console.error(error);
@@ -131,7 +142,7 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
           />
         ))}
       </ul>
-      {/* <div ref={fetchMoreEl} /> */}
+      <div ref={fetchMoreEl} />
     </>
   );
 };
