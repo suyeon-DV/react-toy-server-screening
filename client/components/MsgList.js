@@ -3,7 +3,12 @@ import { useRouter } from "next/router";
 import MsgInput from "./MsgInput";
 import MsgItem from "./MsgItem";
 // import fetcher from "../fetcher";
-import { QueryKeys, fetcher } from "../queryClient";
+import {
+  QueryKeys,
+  fetcher,
+  findTargetMsgIndex,
+  getNewMessages,
+} from "../queryClient";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
 import {
   useMutation,
@@ -18,20 +23,7 @@ import {
   DELETE_MESSAGE,
 } from "./../graphql/message";
 
-// const UserIds = ["roy", "jay"];
-// const getRandomUserId = () => UserIds[Math.round(Math.random())];
-
-const findTargetMsgIndex = (pages, id) => {
-  const msgIndex = -1;
-  const pageIndex = pages.findIndex(({ messages }) => {
-    msgIndex = messages.findIndex((msg) => msg.id === id);
-    if (msgIndex > -1) return true;
-    return false;
-  });
-  return { pageIndex, msgIndex };
-};
-
-const MsgList = ({ serverMsgs, serverUsers }) => {
+const MsgList = ({ serverMsgs }) => {
   const client = useQueryClient();
 
   const {
@@ -73,13 +65,9 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
             updateMessage.id
           );
           if (pageIndex < 0 || msgIndex < 0) return old;
-          const newPages = [...old.pages];
-          newPages[pageIndex] = { messages: [...newPages[pageIndex].messages] };
-          newPages[pageIndex].messages.splice(msgIndex, 1, updateMessage);
-          return {
-            pageParam: old.messages,
-            pages: newPages,
-          };
+          const newMsgs = getNewMessages(old);
+          newMsgs.pages[pageIndex].messages.splice(msgIndex, 1, updateMessage);
+          return newMsgs;
         });
       },
     }
@@ -92,16 +80,13 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
         client.setQueryData(QueryKeys.MESSAGES, (old) => {
           const { pageIndex, msgIndex } = findTargetMsgIndex(
             old.pages,
-            deleteId,
+            deleteId
           );
           if (pageIndex < 0 || msgIndex < 0) return old;
-          const newPages = [...old.pages];
-          newPages[pageIndex] = { messages: [...newPages[pageIndex].messages] };
-          newPages[pageIndex].messages.splice(msgIndex, 1);
-          return {
-            pageParam: old.messages,
-            pages: newPages,
-          };
+
+          const newMsgs = getNewMessages(old);
+          newMsgs.pages[pageIndex].messages.splice(msgIndex, 1);
+          return newMsgs;
         });
         doneEdit();
       },
@@ -139,17 +124,16 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
       {/* delete와 setEditing에 넘겨주는 id를 아래에서 넘기는게 아니라 위에서 넘기는게 인상적 */}
       <MsgInput mutate={onCreate} />
       <ul className="messages">
-        {msgs?.map(({ messages }) =>
+        {msgs?.map(({ messages }, pageIndex) =>
           messages?.map((item) => (
             <MsgItem
-              key={item.id}
+              key={pageIndex + item.id}
               {...item}
               onUpdate={onUpdate}
               onDelete={() => onDelete(item.id)}
               startEdit={() => setEditingId(item.id)}
               isEditing={editingId === item.id}
               myId={userId}
-              user={serverUsers.find((user) => user.id === userId)}
             />
           ))
         )}
