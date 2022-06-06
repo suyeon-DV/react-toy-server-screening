@@ -21,13 +21,23 @@ import {
 // const UserIds = ["roy", "jay"];
 // const getRandomUserId = () => UserIds[Math.round(Math.random())];
 
+const findTargetMsgIndex = (pages, id) => {
+  const msgIndex = -1;
+  const pageIndex = pages.findIndex(({ messages }) => {
+    msgIndex = messages.findIndex((msg) => msg.id === id);
+    if (msgIndex > -1) return true;
+    return false;
+  });
+  return { pageIndex, msgIndex };
+};
+
 const MsgList = ({ serverMsgs, serverUsers }) => {
   const client = useQueryClient();
 
   const {
     query: { userId = "" },
   } = useRouter();
-  const [msgs, setMsgs] = useState(serverMsgs);
+  const [msgs, setMsgs] = useState([serverMsgs]);
   const [editingId, setEditingId] = useState(null);
 
   const fetchMoreEl = useRef(null);
@@ -41,7 +51,11 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
       onSuccess: ({ createMessage }) => {
         client.setQueryData(QueryKeys.MESSAGES, (old) => {
           return {
-            messages: [createMessage, ...old.messages],
+            pageParam: old.pageParam,
+            pages: [
+              { messages: [createMessage, ...old.pages[0].messages] },
+              ...old.pages.slice(1),
+            ],
           };
         });
       },
@@ -52,17 +66,21 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
     ({ text, id }) => fetcher(UPDATE_MESSAGE, { text, id, userId }),
     {
       onSuccess: ({ updateMessage }) => {
-        client.setQueriesData(QueryKeys.MESSAGES, (old) => {
-          const targetIndex = old.messages.findIndex(
-            (msg) => msg.id === updateMessage.id
-            // callback 함수이기 때문에 update된 message의 id와 비교해야함. (updateMessage.id)
-          );
-          if (targetIndex < 0) return old;
-          const newMsgs = [...old.messages];
-          newMsgs.splice(targetIndex, 1, updateMessage);
-          return { messages: newMsgs };
-        });
         doneEdit();
+        client.setQueriesData(QueryKeys.MESSAGES, (old) => {
+          const { pageIndex, msgIndex } = findTargetMsgIndex(
+            old.pages,
+            updateMessage.id
+          );
+          if (pageIndex < 0 || msgIndex < 0) return old;
+          const newPages = [...old.pages];
+          newPages[pageIndex] = { messages: [...newPages[pageIndex].messages] };
+          newPages[pageIndex].messages.splice(msgIndex, 1, updateMessage);
+          return {
+            pageParam: old.messages,
+            pages: newPages,
+          };
+        });
       },
     }
   );
@@ -72,30 +90,23 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
     {
       onSuccess: ({ deleteMessage: deleteId }) => {
         client.setQueryData(QueryKeys.MESSAGES, (old) => {
-          const targetIndex = old.messages.findIndex(
-            (msg) => msg.id === deleteId
+          const { pageIndex, msgIndex } = findTargetMsgIndex(
+            old.pages,
+            deleteId,
           );
-          if (targetIndex < 0) return old;
-          const newMsg = [...old.messages];
-          newMsg.splice(targetIndex, 1);
-          return { messages: newMsg };
+          if (pageIndex < 0 || msgIndex < 0) return old;
+          const newPages = [...old.pages];
+          newPages[pageIndex] = { messages: [...newPages[pageIndex].messages] };
+          newPages[pageIndex].messages.splice(msgIndex, 1);
+          return {
+            pageParam: old.messages,
+            pages: newPages,
+          };
         });
         doneEdit();
       },
     }
   );
-
-  const getMessages = async () => {
-    const newMegs = await fetcher("get", "/messages", {
-      params: { cursor: msgs[msgs.length - 1]?.id || "" },
-    });
-    if (newMegs.length === 0) {
-      setHasNext(false);
-      return;
-    }
-
-    setMsgs((msg) => [...msg, ...newMegs]);
-  };
 
   const { data, error, isError, fetchNextPage, hasNextPage } = useInfiniteQuery(
     QueryKeys.MESSAGES,
@@ -113,9 +124,8 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
 
   useEffect(() => {
     if (!data?.pages) return;
-    const mergedMsgs = data.pages.flatMap((data) => data.messages);
-    console.log({ mergedMsgs });
-    setMsgs(mergedMsgs);
+    // const mergedMsgs = data.pages.flatMap((data) => data.messages);
+    setMsgs(data.pages);
   }, [data?.pages]);
 
   if (isError) {
@@ -129,18 +139,20 @@ const MsgList = ({ serverMsgs, serverUsers }) => {
       {/* delete와 setEditing에 넘겨주는 id를 아래에서 넘기는게 아니라 위에서 넘기는게 인상적 */}
       <MsgInput mutate={onCreate} />
       <ul className="messages">
-        {msgs.map((item) => (
-          <MsgItem
-            key={item.id}
-            {...item}
-            onUpdate={onUpdate}
-            onDelete={() => onDelete(item.id)}
-            startEdit={() => setEditingId(item.id)}
-            isEditing={editingId === item.id}
-            myId={userId}
-            user={serverUsers.find((user) => user.id === userId)}
-          />
-        ))}
+        {msgs?.map(({ messages }) =>
+          messages?.map((item) => (
+            <MsgItem
+              key={item.id}
+              {...item}
+              onUpdate={onUpdate}
+              onDelete={() => onDelete(item.id)}
+              startEdit={() => setEditingId(item.id)}
+              isEditing={editingId === item.id}
+              myId={userId}
+              user={serverUsers.find((user) => user.id === userId)}
+            />
+          ))
+        )}
       </ul>
       <div ref={fetchMoreEl} />
     </>
