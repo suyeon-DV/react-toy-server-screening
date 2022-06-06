@@ -8,6 +8,8 @@
 ### 1. 세팅
 1) yarn 사용 : workspace 사용 위해 (하위에 client, server로 폴더 분리 됨)
 2) Client : Next.js, react, react-dom, sass, axios
+3) Server : express, cors, uuid, nodemon, lowdb
+3) graphql & apollo
 
 ### 2. 개요
 1) Client 폴더
@@ -16,8 +18,4 @@
 
 2) Server 폴더
 - 서버 작업
-
-### 3. 간단 메모
-1) Client
-- msg 조작에 관한 
-
+- db는 JSON 파일로 사용
